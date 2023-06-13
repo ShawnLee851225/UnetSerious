@@ -15,8 +15,7 @@ from tqdm import tqdm
 tqdm_module = True #progress bar
 torchsummary_module = True  #model Visual
 argparse_module = True
-load_model_weight = True
-train_model  = False
+save_model = True
 """----------module switch setting end----------"""
 """----------argparse module----------"""
 if argparse_module:    
@@ -102,3 +101,5 @@ for epoch in pbar:
 
         train_loss += batch_loss.item()
     print(f'train_loss:{train_loss}')
+    if save_model:
+        torch.save(model.state_dict(), args.modelpath +args.model +'.pth')
