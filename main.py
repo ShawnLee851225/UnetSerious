@@ -10,12 +10,13 @@ from torchsummary import summary
 from PIL import Image
 from torchvision import transforms
 from tqdm import tqdm
-
+from torch.nn.functional import softmax
 """----------module switch setting----------"""
 tqdm_module = True #progress bar
 torchsummary_module = True  #model Visual
 argparse_module = True
 save_model = True
+load_model = True
 """----------module switch setting end----------"""
 """----------argparse module----------"""
 if argparse_module:    
@@ -25,14 +26,14 @@ if argparse_module:
     parser.add_argument('--numpy_data_path',type=str,default='./numpydata/',help='output numpy data')
     parser.add_argument('--training_data_path',type=str,default='./training_process_data/',help='output training data path')
 
-    parser.add_argument('--image_size',type=int,default= 540,help='image size')
+    parser.add_argument('--image_size',type=int,default= 108,help='image size')
     parser.add_argument('--num_classes',type=int,default= 1,help='num classes')
-    parser.add_argument('--batch_size',type=int,default= 1,help='batch_size')
+    parser.add_argument('--batch_size',type=int,default= 8,help='batch_size')
     parser.add_argument('--num_epoch',type=int,default= 100,help='num_epoch')
     parser.add_argument('--model',type= str,default='Unet',help='modelname')
     parser.add_argument('--optimizer',type= str,default='Adam',help='optimizer')
     parser.add_argument('--loss',type= str,default='CrossEntropyLoss',help='Loss')
-    parser.add_argument('--lr',type= float,default=1e-3,help='learningrate')
+    parser.add_argument('--lr',type= float,default=1e-4,help='learningrate')
     args = parser.parse_args()
 """----------argparse module end----------"""
 
@@ -83,11 +84,16 @@ train_loader = DataLoader(dataset = train_set,batch_size = args.batch_size,shuff
 
 device = torch.device('cuda' if torch.cuda.is_available else 'cpu')
 model = UNet(3,args.num_classes,True,False).to(device)
+if load_model:
+    model.load_state_dict(torch.load('./model/'+args.model+'.pth'))
+
 optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,amsgrad=False)
 loss = nn.BCEWithLogitsLoss()
 
 if torchsummary_module:
     summary(model.to(device),(3,args.image_size,args.image_size*16//9))
+
+
 for epoch in pbar:
     train_loss =0.0
     model.train()
@@ -100,6 +106,6 @@ for epoch in pbar:
         optimizer.step()
 
         train_loss += batch_loss.item()
-    print(f'train_loss:{train_loss}')
+    pbar.set_postfix({'Train loss':train_loss})
     if save_model:
         torch.save(model.state_dict(), args.modelpath +args.model +'.pth')
