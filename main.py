@@ -28,12 +28,12 @@ if argparse_module:
 
     parser.add_argument('--image_size',type=int,default= 108,help='image size')
     parser.add_argument('--num_classes',type=int,default= 1,help='num classes')
-    parser.add_argument('--batch_size',type=int,default= 8,help='batch_size')
-    parser.add_argument('--num_epoch',type=int,default= 100,help='num_epoch')
+    parser.add_argument('--batch_size',type=int,default= 16,help='batch_size')
+    parser.add_argument('--num_epoch',type=int,default= 1000,help='num_epoch')
     parser.add_argument('--model',type= str,default='Unet',help='modelname')
     parser.add_argument('--optimizer',type= str,default='Adam',help='optimizer')
     parser.add_argument('--loss',type= str,default='CrossEntropyLoss',help='Loss')
-    parser.add_argument('--lr',type= float,default=1e-4,help='learningrate')
+    parser.add_argument('--lr',type= float,default=1e-5,help='learningrate')
     args = parser.parse_args()
 """----------argparse module end----------"""
 
@@ -80,7 +80,7 @@ if tqdm_module:
 """----------tqdm init end----------"""
 
 train_set = footplayerDataset(args.database_path,train_transform)
-train_loader = DataLoader(dataset = train_set,batch_size = args.batch_size,shuffle=False,pin_memory=True)
+train_loader = DataLoader(dataset = train_set,batch_size = args.batch_size,shuffle=True,pin_memory=True)
 
 device = torch.device('cuda' if torch.cuda.is_available else 'cpu')
 model = UNet(3,args.num_classes,True,False).to(device)
