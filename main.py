@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import argparse
 import os
-from evaluate_fn import show_predict_image
+import evaluate_fn
 from torch.utils.data import DataLoader,Dataset
 from Unet import UNet
 from torchsummary import summary
@@ -18,7 +18,7 @@ torchsummary_module = True  #model Visual
 argparse_module = True
 save_model = True
 load_model = True
-train_model = True
+train_model = False
 """----------module switch setting end----------"""
 """----------argparse module----------"""
 if argparse_module:    
@@ -31,7 +31,7 @@ if argparse_module:
     parser.add_argument('--image_size',type=int,default= 108,help='image size')
     parser.add_argument('--num_classes',type=int,default= 1,help='num classes')
     parser.add_argument('--batch_size',type=int,default= 16,help='batch_size')
-    parser.add_argument('--num_epoch',type=int,default= 1000,help='num_epoch')
+    parser.add_argument('--num_epoch',type=int,default= 100,help='num_epoch')
     parser.add_argument('--model',type= str,default='Unet',help='modelname')
     parser.add_argument('--optimizer',type= str,default='Adam',help='optimizer')
     parser.add_argument('--loss',type= str,default='CrossEntropyLoss',help='Loss')
@@ -56,12 +56,12 @@ class footplayerDataset(Dataset):
         # open image
         img = Image.open(img_path)
         label = Image.open(mask_path)
-        
         # turn np
         img_np = np.array(img)
         label_np = np.array(label)
         # turn label 255 to 1
-        label_np[label_np==255] = 1
+        # label_np[label_np==255] = 1
+        # Image.fromarray(label_np).show()
 
         img = self.transforms(img_np)
         label = self.transforms(label_np)
@@ -83,6 +83,9 @@ if tqdm_module:
 
 train_set = footplayerDataset(args.database_path,train_transform)
 train_loader = DataLoader(dataset = train_set,batch_size = args.batch_size,shuffle=True,pin_memory=True)
+test_set = footplayerDataset(args.database_path,train_transform)
+test_loader = DataLoader(dataset = test_set,batch_size = args.batch_size,shuffle=False,pin_memory=True)
+
 
 device = torch.device('cuda' if torch.cuda.is_available else 'cpu')
 model = UNet(3,args.num_classes,True,False).to(device)
@@ -96,6 +99,7 @@ if torchsummary_module:
     summary(model.to(device),(3,args.image_size,args.image_size*16//9))
 
 if train_model:
+    total_loss = []
     for epoch in pbar:
         train_loss =0.0
         model.train()
@@ -108,18 +112,23 @@ if train_model:
             optimizer.step()
 
             train_loss += batch_loss.item()
+        total_loss.append(train_loss)
         pbar.set_postfix({'Train loss':train_loss})
         if save_model:
             torch.save(model.state_dict(), args.modelpath +args.model +'.pth')
+    evaluate_fn.list2excel(total_loss,args.training_data_path+ 'totalloss.xlsx',False)
 
 else:
-    image_path = './dataset/images/0.jpg'
-    image = Image.open(image_path)
-    image = image.resize([192,108])
-    image.show()
+    # image_path = './dataset/images/0.jpg'
+    # image = Image.open(image_path)
+    # image = image.resize([192,108])
+    # image.show()
     model.eval()
-    image = train_transform(image)
-    image = image.unsqueeze(0)
-    train_pred =model(image.to(device))
+    for images,label in test_loader:
+        train_pred =model(images.to(device))
 
-    show_predict_image(train_pred)
+        metrics = evaluate_fn.count_confusion_matrix(train_pred, label)
+        IOUs =evaluate_fn.count_IOU(metrics)
+        Precision,Recall,F1_score = evaluate_fn.count_PRF1(metrics)
+        print(IOUs,Precision,Recall,F1_score)
+    evaluate_fn.show_predict_image(train_pred)
