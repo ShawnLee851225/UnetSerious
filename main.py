@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import argparse
 import os
+from evaluate_fn import show_predict_image
 from torch.utils.data import DataLoader,Dataset
 from Unet import UNet
 from torchsummary import summary
@@ -17,6 +18,7 @@ torchsummary_module = True  #model Visual
 argparse_module = True
 save_model = True
 load_model = True
+train_model = True
 """----------module switch setting end----------"""
 """----------argparse module----------"""
 if argparse_module:    
@@ -33,7 +35,7 @@ if argparse_module:
     parser.add_argument('--model',type= str,default='Unet',help='modelname')
     parser.add_argument('--optimizer',type= str,default='Adam',help='optimizer')
     parser.add_argument('--loss',type= str,default='CrossEntropyLoss',help='Loss')
-    parser.add_argument('--lr',type= float,default=1e-5,help='learningrate')
+    parser.add_argument('--lr',type= float,default=1e-3,help='learningrate')
     args = parser.parse_args()
 """----------argparse module end----------"""
 
@@ -54,7 +56,7 @@ class footplayerDataset(Dataset):
         # open image
         img = Image.open(img_path)
         label = Image.open(mask_path)
-
+        
         # turn np
         img_np = np.array(img)
         label_np = np.array(label)
@@ -93,19 +95,31 @@ loss = nn.BCEWithLogitsLoss()
 if torchsummary_module:
     summary(model.to(device),(3,args.image_size,args.image_size*16//9))
 
+if train_model:
+    for epoch in pbar:
+        train_loss =0.0
+        model.train()
+        for images,label in train_loader:
+            train_pred = model(images.to(device))
+            batch_loss = loss(train_pred, label.to(device))
 
-for epoch in pbar:
-    train_loss =0.0
-    model.train()
-    for images,label in train_loader:
-        train_pred = model(images.to(device))
-        batch_loss = loss(train_pred, label.to(device))
+            optimizer.zero_grad()
+            batch_loss.backward()
+            optimizer.step()
 
-        optimizer.zero_grad()
-        batch_loss.backward()
-        optimizer.step()
+            train_loss += batch_loss.item()
+        pbar.set_postfix({'Train loss':train_loss})
+        if save_model:
+            torch.save(model.state_dict(), args.modelpath +args.model +'.pth')
 
-        train_loss += batch_loss.item()
-    pbar.set_postfix({'Train loss':train_loss})
-    if save_model:
-        torch.save(model.state_dict(), args.modelpath +args.model +'.pth')
+else:
+    image_path = './dataset/images/0.jpg'
+    image = Image.open(image_path)
+    image = image.resize([192,108])
+    image.show()
+    model.eval()
+    image = train_transform(image)
+    image = image.unsqueeze(0)
+    train_pred =model(image.to(device))
+
+    show_predict_image(train_pred)
