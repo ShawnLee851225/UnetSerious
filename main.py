@@ -128,12 +128,24 @@ else:
     # image = image.resize([192,108])
     # image.show()
     model.eval()
+    mIOUs = []
+    mF1_scores = []
     with torch.no_grad():
+        mIOU = []
+        mF1_score = []
         for images,label in test_loader:
             train_pred =model(images.to(device))
 
-            metrics = evaluate_fn.count_confusion_matrix(train_pred, label)
+            evaluate_fn.show_predict_image(train_pred)
+
+            metrics = evaluate_fn.count_confusion_matrix(train_pred, label, 0.03)
             IOUs =evaluate_fn.count_IOU(metrics)
             Precision,Recall,F1_score = evaluate_fn.count_PRF1(metrics)
+            mIOU.append(IOUs)
+            mF1_score.append(F1_score)
             print(IOUs,Precision,Recall,F1_score)
-        evaluate_fn.show_predict_image(train_pred)
+        
+        mIOUs.append(mIOU.mean())
+        mF1_scores(mF1_score.mean())
+    df = list(zip([*mIOUs,*mF1_scores]))
+    evaluate_fn.list2excel(df,args.training_data_path + 'evaluate.xlsx',False)
