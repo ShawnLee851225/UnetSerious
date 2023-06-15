@@ -18,8 +18,9 @@ torchsummary_module = True  #model Visual
 argparse_module = True
 save_model = True
 load_model = True
-train_model = False
+train_model = True
 """----------module switch setting end----------"""
+
 """----------argparse module----------"""
 if argparse_module:    
     parser = argparse.ArgumentParser(description = 'Object detection')
@@ -31,7 +32,7 @@ if argparse_module:
     parser.add_argument('--image_size',type=int,default= 108,help='image size')
     parser.add_argument('--num_classes',type=int,default= 1,help='num classes')
     parser.add_argument('--batch_size',type=int,default= 16,help='batch_size')
-    parser.add_argument('--num_epoch',type=int,default= 1,help='num_epoch')
+    parser.add_argument('--num_epoch',type=int,default= 100,help='num_epoch')
     parser.add_argument('--model',type= str,default='Unet',help='modelname')
     parser.add_argument('--optimizer',type= str,default='Adam',help='optimizer')
     parser.add_argument('--loss',type= str,default='CrossEntropyLoss',help='Loss')
@@ -62,13 +63,9 @@ class footplayerDataset(Dataset):
         # turn label 255 to 1
         # label_np[label_np==255] = 1
         # Image.fromarray(label_np).show()
-
-        img = self.transforms(img)
-        label_transform = transforms.Compose([
-            transforms.ToTensor(), 
-            transforms.Resize((args.image_size,args.image_size*16//9)),
-        ])
-        label = label_transform(label)
+        if self.transforms is not None:
+            img = self.transforms(img)
+            label = self.transforms(label)
 
         return img, label
     def __len__(self):
@@ -76,6 +73,7 @@ class footplayerDataset(Dataset):
 train_transform = transforms.Compose([
     transforms.ToTensor(), 
     transforms.Resize((args.image_size,args.image_size*16//9)),
+    transforms.RandomVerticalFlip(p=0.5),
     transforms.Normalize(mean=[0.5],std=[0.5]),#做正規化[-1~1]之間
 ])
 
@@ -109,7 +107,7 @@ if train_model:
         model.train()
         for images,label in train_loader:
             train_pred = model(images.to(device))
-            batch_loss = loss(train_pred, label.to(device))
+            batch_loss = loss(train_pred, ((label+1)/2).to(device))
 
             optimizer.zero_grad()
             batch_loss.backward()
