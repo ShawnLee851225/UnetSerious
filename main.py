@@ -35,7 +35,7 @@ if argparse_module:
     parser.add_argument('--model',type= str,default='Unet',help='modelname')
     parser.add_argument('--optimizer',type= str,default='Adam',help='optimizer')
     parser.add_argument('--loss',type= str,default='CrossEntropyLoss',help='Loss')
-    parser.add_argument('--lr',type= float,default=1e-3,help='learningrate')
+    parser.add_argument('--lr',type= float,default=1e-5,help='learningrate')
     args = parser.parse_args()
 """----------argparse module end----------"""
 
@@ -72,7 +72,7 @@ class footplayerDataset(Dataset):
 train_transform = transforms.Compose([
     transforms.ToTensor(), 
     transforms.Resize((args.image_size,args.image_size*16//9)),
-    # transforms.Normalize(mean=[0.5, 0.5, 0.5],std=[0.5, 0.5, 0.5]),#做正規化[-1~1]之間
+    transforms.Normalize(mean=[0.5],std=[0.5]),#做正規化[-1~1]之間
 ])
 
 """----------function end----------"""

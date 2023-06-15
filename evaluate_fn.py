@@ -22,6 +22,8 @@ def count_confusion_matrix(train_pred,label) ->np:
     # train pred
     for k in range (len(train_pred)):
         pred_pic = softmax(train_pred[k],dim=1)
+        pred_pil = to_PIL(pred_pic)
+        pred_pil.show()
         pred_pic[pred_pic>=0.5]=1
         pred_pic[pred_pic<0.5]=0
         pred_pic = torch.as_tensor(pred_pic,dtype=torch.uint8)
@@ -69,4 +71,4 @@ def count_PRF1(metrics):
     return Precision,Recall,F1_score
 
 def list2excel(df, path,index) :
-    df = pd.DataFrame(df).to_excel(path,index)
+    df = pd.DataFrame(df).to_excel(path,index= index)
