@@ -31,11 +31,11 @@ if argparse_module:
     parser.add_argument('--image_size',type=int,default= 108,help='image size')
     parser.add_argument('--num_classes',type=int,default= 1,help='num classes')
     parser.add_argument('--batch_size',type=int,default= 16,help='batch_size')
-    parser.add_argument('--num_epoch',type=int,default= 100,help='num_epoch')
+    parser.add_argument('--num_epoch',type=int,default= 1,help='num_epoch')
     parser.add_argument('--model',type= str,default='Unet',help='modelname')
     parser.add_argument('--optimizer',type= str,default='Adam',help='optimizer')
     parser.add_argument('--loss',type= str,default='CrossEntropyLoss',help='Loss')
-    parser.add_argument('--lr',type= float,default=1e-5,help='learningrate')
+    parser.add_argument('--lr',type= float,default=1e-3,help='learningrate')
     args = parser.parse_args()
 """----------argparse module end----------"""
 
@@ -57,14 +57,18 @@ class footplayerDataset(Dataset):
         img = Image.open(img_path)
         label = Image.open(mask_path)
         # turn np
-        img_np = np.array(img)
-        label_np = np.array(label)
+        # img_np = np.array(img)
+        # label_np = np.array(label)
         # turn label 255 to 1
         # label_np[label_np==255] = 1
         # Image.fromarray(label_np).show()
 
-        img = self.transforms(img_np)
-        label = self.transforms(label_np)
+        img = self.transforms(img)
+        label_transform = transforms.Compose([
+            transforms.ToTensor(), 
+            transforms.Resize((args.image_size,args.image_size*16//9)),
+        ])
+        label = label_transform(label)
 
         return img, label
     def __len__(self):
@@ -93,7 +97,7 @@ if load_model:
     model.load_state_dict(torch.load('./model/'+args.model+'.pth'))
 
 optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,amsgrad=False)
-loss = nn.BCEWithLogitsLoss()
+loss = nn.BCEWithLogitsLoss() 
 
 if torchsummary_module:
     summary(model.to(device),(3,args.image_size,args.image_size*16//9))
@@ -124,11 +128,12 @@ else:
     # image = image.resize([192,108])
     # image.show()
     model.eval()
-    for images,label in test_loader:
-        train_pred =model(images.to(device))
+    with torch.no_grad():
+        for images,label in test_loader:
+            train_pred =model(images.to(device))
 
-        metrics = evaluate_fn.count_confusion_matrix(train_pred, label)
-        IOUs =evaluate_fn.count_IOU(metrics)
-        Precision,Recall,F1_score = evaluate_fn.count_PRF1(metrics)
-        print(IOUs,Precision,Recall,F1_score)
-    evaluate_fn.show_predict_image(train_pred)
+            metrics = evaluate_fn.count_confusion_matrix(train_pred, label)
+            IOUs =evaluate_fn.count_IOU(metrics)
+            Precision,Recall,F1_score = evaluate_fn.count_PRF1(metrics)
+            print(IOUs,Precision,Recall,F1_score)
+        evaluate_fn.show_predict_image(train_pred)
