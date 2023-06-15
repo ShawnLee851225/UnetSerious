@@ -21,17 +21,17 @@ def count_confusion_matrix(train_pred,label) ->np:
     """
     # train pred
     for k in range (len(train_pred)):
-        pred_pic = softmax(train_pred[k],dim=1)
-        pred_pil = to_PIL(pred_pic)
-        pred_pil.show()
+        pred_pic = softmax(train_pred[k],dim=1) # -1~1 ->0~1
         pred_pic[pred_pic>=0.5]=1
         pred_pic[pred_pic<0.5]=0
-        pred_pic = torch.as_tensor(pred_pic,dtype=torch.uint8)
+        pred_pic = torch.as_tensor(pred_pic,dtype=torch.int32)
+        print(pred_pic)
 
-        label_pic = label[k]
-        label_pic[label_pic>=0.5]=1
-        label_pic[label_pic<0.5]=0
-        label_pic = torch.as_tensor(label_pic,dtype=torch.uint8)
+        label_pic = label[k] # -1~1
+        label_pic[label_pic>=0]=1
+        label_pic[label_pic<0]=0
+
+        label_pic = torch.as_tensor(label_pic,dtype=torch.int32)
         for i in range(label_pic.size(1)):
             for j in range(label_pic.size(2)):
                 lab = int(label_pic[0][i][j])
