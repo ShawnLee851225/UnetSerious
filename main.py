@@ -1,4 +1,16 @@
+# -*- coding: utf-8 -*-
+"""
+Created on 2023/06/20
 
+train model parser:
+image_size:108, num_classes:1,batch_size=16,num_epoch=10
+test model parser:
+image_size:108, num_classes:1,batch_size=64,num_epoch=1
+
+use BCEloss get mIOU=0.83
+
+@author: Shawn YH Lee
+"""
 import numpy as np
 import torch 
 import torch.nn as nn
@@ -14,11 +26,11 @@ from tqdm import tqdm
 from torch.nn.functional import softmax
 """----------module switch setting----------"""
 tqdm_module = True #progress bar
-torchsummary_module = True  #model Visual
+torchsummary_module = False  #model Visual
 argparse_module = True
 save_model = True
 load_model = True
-train_model = True
+train_model = False
 """----------module switch setting end----------"""
 
 """----------argparse module----------"""
@@ -31,8 +43,8 @@ if argparse_module:
 
     parser.add_argument('--image_size',type=int,default= 108,help='image size')
     parser.add_argument('--num_classes',type=int,default= 1,help='num classes')
-    parser.add_argument('--batch_size',type=int,default= 16,help='batch_size')
-    parser.add_argument('--num_epoch',type=int,default= 100,help='num_epoch')
+    parser.add_argument('--batch_size',type=int,default= 64,help='batch_size')
+    parser.add_argument('--num_epoch',type=int,default= 1,help='num_epoch')
     parser.add_argument('--model',type= str,default='Unet',help='modelname')
     parser.add_argument('--optimizer',type= str,default='Adam',help='optimizer')
     parser.add_argument('--loss',type= str,default='CrossEntropyLoss',help='Loss')
@@ -72,8 +84,8 @@ class footplayerDataset(Dataset):
         return len(self.imgs)
 train_transform = transforms.Compose([
     transforms.ToTensor(), 
-    transforms.Resize((args.image_size,args.image_size*16//9)),
-    transforms.RandomVerticalFlip(p=0.5),
+    transforms.Resize((args.image_size,args.image_size*16//9),antialias=True),
+    # transforms.RandomVerticalFlip(p=0.5),
     transforms.Normalize(mean=[0.5],std=[0.5]),#做正規化[-1~1]之間
 ])
 
@@ -89,13 +101,13 @@ test_set = footplayerDataset(args.database_path,train_transform)
 test_loader = DataLoader(dataset = test_set,batch_size = args.batch_size,shuffle=False,pin_memory=True)
 
 
-device = torch.device('cuda' if torch.cuda.is_available else 'cpu')
+device = torch.device('cuda' if torch.cuda.is_available else 'cpu') if train_model else torch.device('cpu')
 model = UNet(3,args.num_classes,True,False).to(device)
 if load_model:
     model.load_state_dict(torch.load('./model/'+args.model+'.pth'))
 
 optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,amsgrad=False)
-loss = nn.BCEWithLogitsLoss() 
+loss = nn.CrossEntropyLoss() if model.n_classes > 1 else  nn.BCEWithLogitsLoss()
 
 if torchsummary_module:
     summary(model.to(device),(3,args.image_size,args.image_size*16//9))
@@ -107,7 +119,7 @@ if train_model:
         model.train()
         for images,label in train_loader:
             train_pred = model(images.to(device))
-            batch_loss = loss(train_pred, ((label+1)/2).to(device))
+            batch_loss = loss(train_pred, ((label+1)/2).to(device))  # -1 ~ 1
 
             optimizer.zero_grad()
             batch_loss.backward()
@@ -126,24 +138,20 @@ else:
     # image = image.resize([192,108])
     # image.show()
     model.eval()
-    mIOUs = []
-    mF1_scores = []
     with torch.no_grad():
         mIOU = []
         mF1_score = []
         for images,label in test_loader:
             train_pred =model(images.to(device))
 
-            evaluate_fn.show_predict_image(train_pred)
+            # evaluate_fn.show_predict_image(train_pred,0)
+            # evaluate_fn.show_predict_image(label,0)
 
-            metrics = evaluate_fn.count_confusion_matrix(train_pred, label, 0.03)
+            metrics = evaluate_fn.count_confusion_matrix(train_pred, label, 0)
             IOUs =evaluate_fn.count_IOU(metrics)
             Precision,Recall,F1_score = evaluate_fn.count_PRF1(metrics)
             mIOU.append(IOUs)
             mF1_score.append(F1_score)
             print(IOUs,Precision,Recall,F1_score)
-        
-        mIOUs.append(mIOU.mean())
-        mF1_scores(mF1_score.mean())
-    df = list(zip([*mIOUs,*mF1_scores]))
+    df = list(zip([*mIOU,*mF1_score]))
     evaluate_fn.list2excel(df,args.training_data_path + 'evaluate.xlsx',False)

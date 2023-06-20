@@ -3,10 +3,10 @@ from torch.nn.functional import softmax
 import pandas as pd
 import numpy as np
 import torch
-def show_predict_image(train_pred):
-    pred_pic = softmax(train_pred[0],dim=1)
-    pred_pic[pred_pic>0.03]=1
-    # pred_pic[pred_pic<0.5]=0
+def show_predict_image(train_pred,predictthreshold):
+    pred_pic = train_pred[0]
+    pred_pic[pred_pic >= predictthreshold] = 1
+    pred_pic[pred_pic <  predictthreshold] = 0
     to_PIL = transforms.ToPILImage()
     pred_pil = to_PIL(pred_pic)
     pred_pil.show()
@@ -21,15 +21,15 @@ def count_confusion_matrix(train_pred,label,predictthreshold) ->np:
     """
     # train pred
     for k in range (len(train_pred)):
-        pred_pic = softmax(train_pred[k],dim=1) # ->0~1
-        pred_pic[pred_pic >= predictthreshold]=1
-        # pred_pic[pred_pic<0.5]=0
+        pred_pic = train_pred[k]
+        pred_pic[pred_pic >= predictthreshold] = 1
+        pred_pic[pred_pic <  predictthreshold] = 0
  
         pred_pic = torch.as_tensor(pred_pic,dtype=torch.int32)
 
-        label_pic = label[k] # 0~1
-        label_pic[label_pic>=0.5]=1
-        label_pic[label_pic<0.5]=0
+        label_pic = label[k] # -1~1
+        label_pic[label_pic >= predictthreshold] = 1
+        label_pic[label_pic <  predictthreshold] = 0
 
         label_pic = torch.as_tensor(label_pic,dtype=torch.int32)
         for i in range(label_pic.size(1)):
