@@ -10,6 +10,7 @@ def show_predict_image(train_pred,predictthreshold):
     to_PIL = transforms.ToPILImage()
     pred_pil = to_PIL(pred_pic)
     pred_pil.show()
+    return pred_pil
 def count_confusion_matrix(train_pred,label,predictthreshold) ->np:
     to_PIL = transforms.ToPILImage()
     metrics=np.zeros((2,2),dtype=np.int32)

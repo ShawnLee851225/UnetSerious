@@ -41,10 +41,17 @@ if argparse_module:
     parser.add_argument('--numpy_data_path',type=str,default='./numpydata/',help='output numpy data')
     parser.add_argument('--training_data_path',type=str,default='./training_process_data/',help='output training data path')
 
-    parser.add_argument('--image_size',type=int,default= 108,help='image size')
-    parser.add_argument('--num_classes',type=int,default= 1,help='num classes')
-    parser.add_argument('--batch_size',type=int,default= 64,help='batch_size')
-    parser.add_argument('--num_epoch',type=int,default= 1,help='num_epoch')
+    if train_model:
+        parser.add_argument('--image_size',type=int,default= 108,help='image size')
+        parser.add_argument('--num_classes',type=int,default= 1,help='num classes')
+        parser.add_argument('--batch_size',type=int,default= 16,help='batch_size')
+        parser.add_argument('--num_epoch',type=int,default= 10,help='num_epoch')
+    else:
+        parser.add_argument('--image_size',type=int,default= 108,help='image size')
+        parser.add_argument('--num_classes',type=int,default= 1,help='num classes')
+        parser.add_argument('--batch_size',type=int,default= 64,help='batch_size')
+        parser.add_argument('--num_epoch',type=int,default= 1,help='num_epoch')
+
     parser.add_argument('--model',type= str,default='Unet',help='modelname')
     parser.add_argument('--optimizer',type= str,default='Adam',help='optimizer')
     parser.add_argument('--loss',type= str,default='CrossEntropyLoss',help='Loss')
@@ -139,19 +146,15 @@ else:
     # image.show()
     model.eval()
     with torch.no_grad():
-        mIOU = []
-        mF1_score = []
         for images,label in test_loader:
             train_pred =model(images.to(device))
 
-            # evaluate_fn.show_predict_image(train_pred,0)
-            # evaluate_fn.show_predict_image(label,0)
+            # pred_pil = evaluate_fn.show_predict_image(train_pred,0)
+            # label_pil =evaluate_fn.show_predict_image(label,0)
+            # pred_pil.save(args.training_data_path+'predict.jpg')
+            # label_pil.save(args.training_data_path+'mask.jpg')
 
             metrics = evaluate_fn.count_confusion_matrix(train_pred, label, 0)
             IOUs =evaluate_fn.count_IOU(metrics)
             Precision,Recall,F1_score = evaluate_fn.count_PRF1(metrics)
-            mIOU.append(IOUs)
-            mF1_score.append(F1_score)
             print(IOUs,Precision,Recall,F1_score)
-    df = list(zip([*mIOU,*mF1_score]))
-    evaluate_fn.list2excel(df,args.training_data_path + 'evaluate.xlsx',False)
